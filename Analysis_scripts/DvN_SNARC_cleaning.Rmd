@@ -1,0 +1,181 @@
+---
+title: "DvN_SNARC_cleaning"
+author: "Courtney Goodridge"
+date: "03/12/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The following script aims to clean the data ready for analysis. The clean data file is available from the repository but this cleaning script is also provided for completeness.
+
+## load packages
+
+```{r}
+# rm(list = ls())
+library("readxl") # load data
+library("ggplot2") # plotting
+library("dplyr") # data manipulation
+library("tidyr") # data manipulation
+library("afex") # ANOVA
+library("lme4") # multilevel modelling
+library("lmerTest") # multilevel modelling
+library("Rmisc") # plotting interaction effects
+library("BayesFactor") # computing bayes factor
+library("emmeans")
+library("gridExtra")
+library("ez")
+library("WebPower")
+library("effsize")
+```
+
+## load data 
+
+Save data into your working directory. If you do not know what your working directory is, run the getwd() function in the command line. Once your data is saved in this location, you can run the next code chuck to load the data into R Studio.
+
+```{r}
+"set working directory"
+setwd(getwd())
+setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/valter/Dots vs Numerosity")
+"Load data frames"
+dat_missing <- read_excel("Session1.xlsx")
+dat <- read_excel("Session2_combine.xlsx", 2)
+```
+
+## Selcting relevant columns for analysis
+
+Below I am selecting columns that will be used for the analysis, adding row identifier variable, and creating a magnitude and response hand variable
+
+```{r}
+"selecting relevant columns for analysis"
+dat_clean <- dat %>%
+  dplyr::select(Condition, number, correctkey, Congruent, participant, key_response = exp_number_key_resp.keys, correct = exp_number_key_resp.corr, rt = exp_number_key_resp.rt, exp_sess_trials.thisRepN,  exp_sess_trials.thisTrialN, exp_sess_trials.thisN, exp_sess_trials.thisIndex) %>%
+  dplyr::mutate(x = row_number())
+
+"creating magnitude and hand identifies"
+dat_clean <- dat_clean %>%
+  dplyr::mutate(magnitude = case_when(number < 3 ~ "small",
+                                      number > 3 ~ "large"),
+                hand = case_when(key_response == "a" ~ "left",
+                                 key_response == "l" ~ "right")) %>%
+  dplyr::arrange(number) %>%
+  dplyr::mutate(x = row_number())
+```
+
+## Investigating NA values
+
+The main dataset (dat_clean) contains 1280 trials where the number magnitude is missing. The correct number magnitude for these trials is found within dat_missing dataframe. I therefore need to add the number magnitude from dat_missing to dat_clean. Below I list what each chunk of code is doing to the data frame. 
+
+## Investigating NA values
+
+The main dataset (dat_clean) contains 1280 trials where the number magnitude is missing. The correct number magnitude for these trials is found within dat_missing dataframe. I therefore need to add the number magnitude from dat_missing to dat_clean.
+
+1) trials in the main dataset that have missing number variables are filtered and arranged by rt. Trials on rows 16321 and above contain NAs for the number magnitude so I filter this responses. I select Condition, participant and rt as trial identifies. 
+
+2) The dataframe that contains the number variables is also arranged by rt. This allows me to merge the datasets by rt.
+
+3) I merge the two datasets 
+
+4) I add a magnitude and hand variable to the missing data frame
+
+5) I filter out the NAs from the main dataframe and then bind the new correct data to it, and then drop the missing the RTs. 
+
+```{r}
+"checking the class of each variable"
+sapply(dat_clean, class)
+
+"change rt variable to be numeric type"
+dat_clean <- dat_clean %>%
+  dplyr::mutate(rt = as.numeric(rt))
+
+"checking for NA values"
+colSums(is.na(dat_clean))
+
+"1) the 1280 NA values"
+na_dat <- dat_clean %>%
+  dplyr::arrange(number) %>%
+  dplyr::filter(x >= 16321) %>%
+  dplyr::select(Condition, participant, rt) %>%
+  tidyr::drop_na(rt) %>%
+  dplyr::arrange(rt)
+
+"2) the 1280 missing data points"
+dat_missing <- dat_missing %>%
+  dplyr::select(number, correctkey, Congruent, participant, key_response = exp_number_key_resp.keys, correct = exp_number_key_resp.corr, rt = exp_number_key_resp.rt, exp_sess_trials.thisRepN,  exp_sess_trials.thisTrialN, exp_sess_trials.thisN, exp_sess_trials.thisIndex) %>%
+  dplyr::mutate(rt = as.numeric(rt)) %>%
+  tidyr::drop_na(rt) %>%
+  dplyr::arrange(rt)
+
+"3) merging the missing data points"
+dat_missing <- dat_missing %>%
+  dplyr::bind_cols(na_dat) %>%
+  dplyr::select(1:12)
+
+"4) creating magnitude and hand variable"
+dat_missing <- dat_missing %>%
+  dplyr::mutate(magnitude = case_when(number < 3 ~ "small",
+                                      number > 3 ~ "large"),
+                hand = case_when(key_response == "a" ~ "left",
+                                 key_response == "l" ~ "right"))
+
+"5) filtering NA values from the number column and binding the found missing values"
+dat_clean <- dat_clean %>%
+  dplyr::arrange(number) %>%
+  dplyr::filter(x < 16321) %>%
+  dplyr::bind_rows(dat_missing) %>%
+  tidyr::drop_na(rt) %>%
+  dplyr::mutate(x = row_number())
+
+colSums(is.na(dat_clean))
+```
+
+## Cleaning RT values
+
+RT times over 2 had the decimal point in the wrong place. I therefore fix this and combine the datasets with a clean RT variable.
+
+```{r}
+"disable scientific notation"
+options(scipen = 999)
+
+"edting deicmal place of RTs over 2 s"
+dat_2 <- dat_clean %>%
+  dplyr::filter(rt > 2) %>%
+  dplyr::mutate(n_digits = floor(log10(rt)) + 1) %>%
+  dplyr::mutate(rt = case_when(n_digits == 7 ~ rt / 1000000,
+                               n_digits == 6 ~ rt / 100000,
+                               n_digits == 5 ~ rt / 10000,
+                               n_digits == 4 ~ rt / 1000))
+
+"filtering data where RTs are less than 2 s"
+dat_1 <- dat_clean %>%
+  dplyr::filter(rt <= 2)
+
+"combining the datasets"
+dat_main <- dplyr::bind_rows(dat_1, dat_2)
+```
+
+## Creating participant identifier tag
+
+```{r}
+"creating tag"
+ppid <- dat_main %>%
+  dplyr::group_by(participant) %>%
+  dplyr::slice(1) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(ppid = row_number()) %>%
+  dplyr::select(participant, ppid)
+
+"merging tag with main dataframe"
+dat_main <- merge(dat_main, ppid, by = c("participant"))
+```
+
+## Saving clean data
+
+The dataframe is now clean and ready for analysis. I save into the working directory ready for analysis in the DvN_SNARC.Rmd analysis and plotting script. 
+
+```{r}
+setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/valter/Dots vs Numerosity")
+write.csv(dat_main, file = "dat_main.csv")
+```
