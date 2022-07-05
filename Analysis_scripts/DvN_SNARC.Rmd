@@ -9,6 +9,12 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+## Script introduction
+
+This is the main script that computes the analysis for the manuscript Prpic, V., Basamh, Y., Goodridge, C. M., Agostini, T., & Murgia, M. (2022). Contrasting symbolic and non-symbolic numerical representations in a joint classification task.
+
+Download the DvN_manuscript_analysis into your working directory. Check your current working directory by running the getwd() function in the R command line. Then run each chunk of code in turn. 
+
 ## Task overview
 
 Participants had to complete 2 tasks:
@@ -28,22 +34,56 @@ Participants had to respond with left and right key presses. We are looking for 
 ## load packages
 
 ```{r}
-# rm(list = ls())
-library("readxl") # load data
-library("ggplot2") # plotting
-library("dplyr") # data manipulation
-library("tidyr") # data manipulation
-library("afex") # ANOVA
-library("lme4") # multilevel modelling
-library("lmerTest") # multilevel modelling
-library("Rmisc") # plotting interaction effects
-library("BayesFactor") # computing bayes factor
-library("emmeans")
-library("gridExtra")
-library("ez")
-library("WebPower")
-library("effsize")
-library("arm")
+if(!require(knitr)) install.packages("knitr")
+library(knitr)
+
+if(!require(here)) install.packages("here")
+library(here)
+
+if(!require(readxl)) install.packages("readxl")
+library(readxl)
+
+if(!require(ggplot2)) install.packages("ggplot2")
+library(ggplot2)
+
+if(!require(dplyr)) install.packages("dplyr")
+library(dplyr)
+
+if(!require(tidyr)) install.packages("tidyr")
+library(tidyr)
+
+if(!require(afex)) install.packages("afex")
+library(afex)
+
+if(!require(lme4)) install.packages("lme4")
+library(lme4)
+
+if(!require(lmerTest)) install.packages("lmerTest")
+library(lmerTest)
+
+if(!require(Rmisc)) install.packages("Rmisc")
+library(Rmisc)
+
+if(!require(BayesFactor)) install.packages("BayesFactor")
+library(here)
+
+if(!require(emmeans)) install.packages("emmeans")
+library(emmeans)
+
+if(!require(gridExtra)) install.packages("gridExtra")
+library(here)
+
+if(!require(ez)) install.packages("ez")
+library(ez)
+
+if(!require(WebPower)) install.packages("WebPower")
+library(WebPower)
+
+if(!require(effsize)) install.packages("effsize")
+library(effsize)
+
+if(!require(gridExtra)) install.packages("gridExtra")
+library(gridExtra)
 ```
 
 ## Calculating power
@@ -56,7 +96,7 @@ Numerator DF is 1, Cohen's F is .40, number of groups (ng) is 3, alpha is .05, p
 "3 way interaction"
 sqrt(0.14/(1 - 0.14))
 
-wp.kanova(ndf = 1, f =  0.4034733, ng = 3, alpha = 0.05, power = .80)
+wp.kanova(ndf = 1, f =  0.25, ng = 8, alpha = 0.05, power = .80)
 ```
 
 ## load data 
@@ -64,10 +104,7 @@ wp.kanova(ndf = 1, f =  0.4034733, ng = 3, alpha = 0.05, power = .80)
 Save data into your working directory. If you do not know what your working directory is, run the getwd() function in the command line. Once your data is saved in this location, you can run the next code chuck to load the data into R Studio.
 
 ```{r}
-"set working directory"
-setwd(getwd())
-setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/valter/Dots vs Numerosity")
-dat_main <- read.csv("dat_main.csv")
+dat_main <- read.csv(here::here("Data/dat_main.csv"))
 ```
 
 ## Create plot theme
@@ -245,9 +282,8 @@ incongruent.snarc <- ggplot() +
   theme_plot +
   theme(legend.position = "none", legend.key.height = unit(0, 'cm'), legend.key = element_blank(), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 13, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7))
 
-setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/valter/DvN_plots")
 g <- arrangeGrob(congruent.snarc, incongruent.snarc, nrow = 1)
-  ggsave('results.fig.2.tiff', g,  width = 15, height = 7, units = 'cm', dpi = 900, type = 'cairo')
+  ggsave(here::here("Figures/results.fig.2.tiff"), g,  width = 15, height = 7, units = 'cm', dpi = 900, type = 'cairo')
 ```
 
 ## Mean plots for dRT (symbolic numerals - digits)
@@ -683,6 +719,17 @@ ggplot(meanrt_errors, mapping = aes(x = perc, y = mean_rt)) +
   ylab("Mean reaction times (s)") +
   theme_plot +
   theme(legend.position = "none", legend.direction = "vertical", legend.key.height = unit(0, 'cm'), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 20, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7)) 
+```
+
+## Further analysis
+
+```{r}
+dat_main <- dat_main %>%
+  dplyr::mutate(hand.num.congruent = case_when(number > 3 & hand == "right" ~ "Cong",
+                                               number < 3 & hand == "left" ~ "Cong",
+                                               number > 3 & hand == "left" ~ "Incong",
+                                               number < 3 & hand == "right" ~ "Incong"))
+
 ```
 
 
