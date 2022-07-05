@@ -9,26 +9,60 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-The following script aims to clean the data ready for analysis. The clean data file is available from the repository but this cleaning script is also provided for completeness.
+The following script aims to clean the data from session 1 and 2 ready for analysis. The clean data file is available from the repository but this cleaning script is also provided for completeness.
+
+Save the DvN_manuscript_analysis into your working directory in order to run this analysis script. Check your current working directory by running the getwd() function in the R command line.
 
 ## load packages
 
 ```{r}
-# rm(list = ls())
-library("readxl") # load data
-library("ggplot2") # plotting
-library("dplyr") # data manipulation
-library("tidyr") # data manipulation
-library("afex") # ANOVA
-library("lme4") # multilevel modelling
-library("lmerTest") # multilevel modelling
-library("Rmisc") # plotting interaction effects
-library("BayesFactor") # computing bayes factor
-library("emmeans")
-library("gridExtra")
-library("ez")
-library("WebPower")
-library("effsize")
+if(!require(knitr)) install.packages("knitr")
+library(knitr)
+
+if(!require(here)) install.packages("here")
+library(here)
+
+if(!require(readxl)) install.packages("readxl")
+library(readxl)
+
+if(!require(ggplot2)) install.packages("ggplot2")
+library(ggplot2)
+
+if(!require(dplyr)) install.packages("dplyr")
+library(dplyr)
+
+if(!require(tidyr)) install.packages("tidyr")
+library(tidyr)
+
+if(!require(afex)) install.packages("afex")
+library(afex)
+
+if(!require(lme4)) install.packages("lme4")
+library(lme4)
+
+if(!require(lmerTest)) install.packages("lmerTest")
+library(lmerTest)
+
+if(!require(Rmisc)) install.packages("Rmisc")
+library(Rmisc)
+
+if(!require(BayesFactor)) install.packages("BayesFactor")
+library(here)
+
+if(!require(emmeans)) install.packages("emmeans")
+library(emmeans)
+
+if(!require(gridExtra)) install.packages("gridExtra")
+library(here)
+
+if(!require(ez)) install.packages("ez")
+library(ez)
+
+if(!require(WebPower)) install.packages("WebPower")
+library(WebPower)
+
+if(!require(effsize)) install.packages("effsize")
+library(effsize)
 ```
 
 ## load data 
@@ -36,12 +70,8 @@ library("effsize")
 Save data into your working directory. If you do not know what your working directory is, run the getwd() function in the command line. Once your data is saved in this location, you can run the next code chuck to load the data into R Studio.
 
 ```{r}
-"set working directory"
-setwd(getwd())
-setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/valter/Dots vs Numerosity")
-"Load data frames"
-dat_missing <- read_excel("Session1.xlsx")
-dat <- read_excel("Session2_combine.xlsx", 2)
+dat_missing <- read_excel(here::here("Data/Session1.xlsx"))
+dat <- read_excel(here::here("Data/Session2_combine.xlsx"), 2)
 ```
 
 ## Selcting relevant columns for analysis
@@ -176,6 +206,5 @@ dat_main <- merge(dat_main, ppid, by = c("participant"))
 The dataframe is now clean and ready for analysis. I save into the working directory ready for analysis in the DvN_SNARC.Rmd analysis and plotting script. 
 
 ```{r}
-setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/valter/Dots vs Numerosity")
-write.csv(dat_main, file = "dat_main.csv")
+write.csv(dat_main, file = here::here("Data/dat_main.csv"))
 ```
