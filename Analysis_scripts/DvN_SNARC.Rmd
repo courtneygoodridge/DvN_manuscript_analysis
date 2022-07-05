@@ -721,14 +721,107 @@ ggplot(meanrt_errors, mapping = aes(x = perc, y = mean_rt)) +
   theme(legend.position = "none", legend.direction = "vertical", legend.key.height = unit(0, 'cm'), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 20, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7)) 
 ```
 
-## Further analysis
+## Hand/Number Congruency * Presentation Congruency * Condition analysis
+
+Significant interaction between Hand/Number Congruency and Condition. Participants respond more slowly when hand and number information is in congruent when presented with Digits. When hand and number information is congruent, repsonse time between digits and numerosity conditions are largely the same. 
 
 ```{r}
-dat_main <- dat_main %>%
+digits.data <- dat_main %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(Condition == "Digit", ppid != 45, ppid != 5, outlier == FALSE) %>%
   dplyr::mutate(hand.num.congruent = case_when(number > 3 & hand == "right" ~ "Cong",
                                                number < 3 & hand == "left" ~ "Cong",
                                                number > 3 & hand == "left" ~ "Incong",
                                                number < 3 & hand == "right" ~ "Incong"))
+
+numerosity.dat <- dat_main %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(Condition == "Numerosity", ppid != 45, ppid != 5, outlier == FALSE) %>%
+   dplyr::mutate(hand.num.congruent = case_when(number > 3 & hand == "right" ~ "Cong",
+                                               number < 3 & hand == "left" ~ "Cong",
+                                               number > 3 & hand == "left" ~ "Incong",
+                                               number < 3 & hand == "right" ~ "Incong")) %>%
+  dplyr::mutate(magnitude = case_when(number < 3 & Congruent ==  "Incong" ~ "large",
+                                      number > 3 & Congruent ==  "Incong" ~ "small",
+                                      number < 3 & Congruent == "Cong" ~ "small",
+                                      number > 3 & Congruent == "Cong" ~ "large"))
+
+
+congruent.symbolic <- dplyr::bind_rows(digits.data, numerosity.dat)
+
+aov.s <- aov_car(ms ~ hand.num.congruent * Congruent * Condition + Error(ppid/hand.num.congruent * Congruent * Condition),
+                 anova_table = list(es = "pes"),
+                 data = congruent.symbolic)
+
+aov.s
+
+summary.s <- summarySE(congruent.symbolic, measurevar = "ms", groupvars = c("hand.num.congruent", "Congruent", "Condition"))
+
+
+ggplot() +
+  geom_point(data = summary.s %>%
+               dplyr::filter(Congruent == "Cong"), mapping = aes(x = hand.num.congruent, y = ms)) +
+  geom_line(data = summary.s %>%
+              dplyr::filter(Congruent == "Cong"), mapping = aes(x = hand.num.congruent, linetype = as.factor(Condition), group = as.factor(Condition), y = ms)) +
+  geom_errorbar(data = summary.s %>%
+               dplyr::filter(Congruent == "Cong"), mapping = aes(x = hand.num.congruent, y = ms, ymin = ms - se, ymax = ms + se), width = 0.1) +
+  #scale_x_discrete(labels = c('Small','Large')) +
+  #scale_linetype_manual(name = "Condition", labels = c("Left", "Right"),  values = c("solid", "dotted")) +
+  ggtitle("A: Congruent") +
+  ylim(460, 560) +
+  ylab("Reaction time (ms)") +
+  #xlab("Number magnitude") +
+  theme_plot +
+  theme(legend.position = c(0.25, 0.85), legend.key.height = unit(0, 'cm'), legend.key = element_blank(), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 13, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7))
+  
+  
+ggplot() +
+  geom_point(data = summary.s %>%
+               dplyr::filter(Congruent == "Incong"), mapping = aes(x = hand.num.congruent, y = ms)) +
+  geom_line(data = summary.s %>%
+              dplyr::filter(Congruent == "Incong"), mapping = aes(x = hand.num.congruent, linetype = as.factor(Condition), group = as.factor(Condition), y = ms)) +
+  geom_errorbar(data = summary.s %>%
+               dplyr::filter(Congruent == "Incong"), mapping = aes(x = hand.num.congruent, y = ms, ymin = ms - se, ymax = ms + se), width = 0.1) +
+  #scale_x_discrete(labels = c('Small','Large')) +
+  #scale_linetype_manual(name = "Condition", labels = c("Left", "Right"),  values = c("solid", "dotted")) +
+  ggtitle("B: Incongruent") +
+  ylim(460, 560) +
+  ylab("Reaction time (ms)") +
+  #xlab("Number magnitude") +
+  theme_plot +
+  theme(legend.position = c(0.25, 0.85), legend.key.height = unit(0, 'cm'), legend.key = element_blank(), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 13, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7))
+```
+
+## Fully congruent vs partially congruent
+
+In the original study, only some conditions within the "congruent" conditon were "fully" congruent. For example, when the 1 digit was presented just once, the 2 digit presented twice, the 4 digit presented 4 times, and the 5 digit presented 5 times. The remaining conditions are partially congruent because the digit and numerosity of the digit are congruent, but not the pattern. 
+
+For this next analysis, we want to know whether there is  difference in response between these fully and partially congruent conditions.
+
+```{r}
+fully.partial <- dat_main %>%
+  dplyr::filter(Congruent == "Cong", ppid != 45, ppid != 5, outlier == FALSE)
+
+fully.partial <- fully.partial %>%
+  dplyr::mutate(Congruent.Full.Partial = case_when(Condition == Digit & number == 1 ~ "full",
+                                                   Condition == Digit & number ==  2 ~ "partial",
+                                                   Condition == Numerosity & number == 1 ~ "partial",
+                                                   Condition == Numerosity & number == 2 ~ "full",
+                                                   Condition == Digit & number == 4 ~ "full",
+                                                   Condition == Digit & number == 5 ~ "partial",
+                                                   Condition == Numerosity & number == 4 ~ "partial",
+                                                   Condition == Numerosity & number == 5 ~ "full"))
+
+
+
+aov.f.p <- aov_car(ms ~ hand * magnitude * Condition + Error(ppid/hand * magnitude * Condition),
+                 anova_table = list(es = "pes"),
+                 data = fully.partial)
+
+aov.f.p
+
+
+
 
 ```
 
