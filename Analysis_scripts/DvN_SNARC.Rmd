@@ -104,7 +104,7 @@ wp.kanova(ndf = 1, f =  0.25, ng = 8, alpha = 0.05, power = .80)
 Save data into your working directory. If you do not know what your working directory is, run the getwd() function in the command line. Once your data is saved in this location, you can run the next code chuck to load the data into R Studio.
 
 ```{r}
-dat_main <- read.csv(here::here("Data/dat_main.csv"))
+dat_main <- read.csv(here::here("DvN_manuscript_analysis/Data/dat_main.csv"))
 ```
 
 ## Create plot theme
@@ -723,7 +723,7 @@ ggplot(meanrt_errors, mapping = aes(x = perc, y = mean_rt)) +
 
 ## Hand/Number Congruency * Presentation Congruency * Condition analysis
 
-Significant interaction between Hand/Number Congruency and Condition. Participants respond more slowly when hand and number information is in congruent when presented with Digits. When hand and number information is congruent, repsonse time between digits and numerosity conditions are largely the same. 
+Significant interaction between Hand/Number Congruency and Condition. Participants respond more slowly when hand and number information is in congruent when presented with Digits. When hand and number information is congruent, response time between digits and numerosity conditions are largely the same. 
 
 ```{r}
 digits.data <- dat_main %>%
@@ -747,44 +747,44 @@ numerosity.dat <- dat_main %>%
                                       number > 3 & Congruent == "Cong" ~ "large"))
 
 
-congruent.symbolic <- dplyr::bind_rows(digits.data, numerosity.dat)
+cong.incong.key <- dplyr::bind_rows(digits.data, numerosity.dat)
 
-aov.s <- aov_car(ms ~ hand.num.congruent * Congruent * Condition + Error(ppid/hand.num.congruent * Congruent * Condition),
+aov.c.i.key <- aov_car(ms ~ hand.num.congruent * Congruent * Condition + Error(ppid/hand.num.congruent * Congruent * Condition),
                  anova_table = list(es = "pes"),
-                 data = congruent.symbolic)
+                 data = cong.incong.key)
 
-aov.s
+aov.c.i.key
 
-summary.s <- summarySE(congruent.symbolic, measurevar = "ms", groupvars = c("hand.num.congruent", "Congruent", "Condition"))
+summary.c.i.key <- summarySE(cong.incong.key, measurevar = "ms", groupvars = c("hand.num.congruent", "Congruent", "Condition"))
 
 
 ggplot() +
-  geom_point(data = summary.s %>%
+  geom_point(data = summary.c.i.key %>%
                dplyr::filter(Congruent == "Cong"), mapping = aes(x = hand.num.congruent, y = ms)) +
-  geom_line(data = summary.s %>%
+  geom_line(data = summary.c.i.key %>%
               dplyr::filter(Congruent == "Cong"), mapping = aes(x = hand.num.congruent, linetype = as.factor(Condition), group = as.factor(Condition), y = ms)) +
   geom_errorbar(data = summary.s %>%
                dplyr::filter(Congruent == "Cong"), mapping = aes(x = hand.num.congruent, y = ms, ymin = ms - se, ymax = ms + se), width = 0.1) +
-  #scale_x_discrete(labels = c('Small','Large')) +
-  #scale_linetype_manual(name = "Condition", labels = c("Left", "Right"),  values = c("solid", "dotted")) +
-  ggtitle("A: Congruent") +
+  scale_x_discrete(labels = c('Congruent','Incongruent')) +
+  scale_linetype_manual(name = "Condition", labels = c("Symbolic", "Non-Symbolic"),  values = c("solid", "dotted")) +
+  ggtitle("A) Presentation: Congruent") +
   ylim(460, 560) +
   ylab("Reaction time (ms)") +
-  #xlab("Number magnitude") +
+  xlab("Key assignment") +
   theme_plot +
   theme(legend.position = c(0.25, 0.85), legend.key.height = unit(0, 'cm'), legend.key = element_blank(), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 13, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7))
   
   
 ggplot() +
-  geom_point(data = summary.s %>%
+  geom_point(data = summary.c.i.key %>%
                dplyr::filter(Congruent == "Incong"), mapping = aes(x = hand.num.congruent, y = ms)) +
-  geom_line(data = summary.s %>%
+  geom_line(data = summary.c.i.key %>%
               dplyr::filter(Congruent == "Incong"), mapping = aes(x = hand.num.congruent, linetype = as.factor(Condition), group = as.factor(Condition), y = ms)) +
-  geom_errorbar(data = summary.s %>%
+  geom_errorbar(data = summary.c.i.key %>%
                dplyr::filter(Congruent == "Incong"), mapping = aes(x = hand.num.congruent, y = ms, ymin = ms - se, ymax = ms + se), width = 0.1) +
-  #scale_x_discrete(labels = c('Small','Large')) +
-  #scale_linetype_manual(name = "Condition", labels = c("Left", "Right"),  values = c("solid", "dotted")) +
-  ggtitle("B: Incongruent") +
+  scale_x_discrete(labels = c('Congruent','Incongruent')) +
+  scale_linetype_manual(name = "Condition", labels = c("Symbolic", "Non-Symbolic"),  values = c("solid", "dotted")) +
+  ggtitle("B) Presentation: Incongruent") +
   ylim(460, 560) +
   ylab("Reaction time (ms)") +
   #xlab("Number magnitude") +
@@ -792,35 +792,201 @@ ggplot() +
   theme(legend.position = c(0.25, 0.85), legend.key.height = unit(0, 'cm'), legend.key = element_blank(), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 13, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7))
 ```
 
-## Fully congruent vs partially congruent
+## Fully congruent vs partially congruent - Repeated Measures ANOVA for digits condition (Figures 7)
 
-In the original study, only some conditions within the "congruent" conditon were "fully" congruent. For example, when the 1 digit was presented just once, the 2 digit presented twice, the 4 digit presented 4 times, and the 5 digit presented 5 times. The remaining conditions are partially congruent because the digit and numerosity of the digit are congruent, but not the pattern. 
+In the original study, only some conditions within the "congruent" condition were "fully" congruent. For example, when the 1 digit was presented just once, the 2 digit presented twice, the 4 digit presented 4 times, and the 5 digit presented 5 times. The remaining conditions are partially congruent because the digit and numerosity of the digit are congruent, but not the pattern. 
 
 For this next analysis, we want to know whether there is  difference in response between these fully and partially congruent conditions.
 
+## Digits
+
 ```{r}
+"filtering congruent only data"
 fully.partial <- dat_main %>%
   dplyr::filter(Congruent == "Cong", ppid != 45, ppid != 5, outlier == FALSE)
 
+
+"creating full vs partial ID tag"
 fully.partial <- fully.partial %>%
-  dplyr::mutate(Congruent.Full.Partial = case_when(Condition == Digit & number == 1 ~ "full",
-                                                   Condition == Digit & number ==  2 ~ "partial",
-                                                   Condition == Numerosity & number == 1 ~ "partial",
-                                                   Condition == Numerosity & number == 2 ~ "full",
-                                                   Condition == Digit & number == 4 ~ "full",
-                                                   Condition == Digit & number == 5 ~ "partial",
-                                                   Condition == Numerosity & number == 4 ~ "partial",
-                                                   Condition == Numerosity & number == 5 ~ "full"))
+  dplyr::mutate(Congruent.Full.Partial = case_when(Condition == "Digit" & number == 1 ~ "full",
+                                                   Condition == "Digit" & number ==  2 ~ "partial",
+                                                   Condition == "Numerosity" & number == 1 ~ "partial",
+                                                   Condition == "Numerosity" & number == 2 ~ "full",
+                                                   Condition == "Digit" & number == 4 ~ "full",
+                                                   Condition == "Digit" & number == 5 ~ "partial",
+                                                   Condition == "Numerosity" & number == 4 ~ "partial",
+                                                   Condition == "Numerosity" & number == 5 ~ "full"))
 
+"filter just for digits data"
+fully.partial.digits <- fully.partial %>%
+  dplyr::filter(Condition == "Digit")
 
-
-aov.f.p <- aov_car(ms ~ hand * magnitude * Condition + Error(ppid/hand * magnitude * Condition),
+"compute ANOVA"
+aov.f.p <- aov_car(ms ~ hand * magnitude * Congruent.Full.Partial + Error(ppid/hand * magnitude * Congruent.Full.Partial),
                  anova_table = list(es = "pes"),
-                 data = fully.partial)
-
+                 data = fully.partial.digits)
 aov.f.p
 
+"compute means and SEMs"
+summary.f.p <- summarySE(fully.partial.digits, measurevar = "ms", groupvars = c("Congruent.Full.Partial", "hand", "magnitude"))
 
+"full congruency"
+ggplot() +
+  geom_point(data = summary.f.p %>%
+               dplyr::filter(Congruent.Full.Partial == "full") %>%
+               dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+               dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, y = ms)) +
+  geom_line(data = summary.f.p %>%
+              dplyr::filter(Congruent.Full.Partial == "full") %>%
+              dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+              dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, linetype = as.factor(hand), group = as.factor(hand), y = ms)) +
+  geom_errorbar(data = summary.f.p %>%
+               dplyr::filter(Congruent.Full.Partial == "full") %>%
+                 dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+                 dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, y = ms, ymin = ms - se, ymax = ms + se), width = 0.1) +
+  scale_x_discrete(labels = c('Small','Large')) +
+  scale_linetype_manual(name = "Response hand", labels = c("Left", "Right"),  values = c("solid", "dotted")) +
+  ggtitle("A: Fully Congruent") +
+  ylim(460, 560) +
+  ylab("Reaction time (ms)") +
+  xlab("Number magnitude") +
+  theme_plot +
+  theme(legend.position = c(0.25, 0.85), legend.key.height = unit(0, 'cm'), legend.key = element_blank(), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 13, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7))
+  
+"partially congruency"  
+ggplot() +
+  geom_point(data = summary.f.p %>%
+               dplyr::filter(Congruent.Full.Partial == "partial") %>%
+               dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+               dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, y = ms)) +
+  geom_line(data = summary.f.p %>%
+              dplyr::filter(Congruent.Full.Partial == "partial") %>%
+              dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+              dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, linetype = as.factor(hand), group = as.factor(hand), y = ms)) +
+  geom_errorbar(data = summary.f.p %>%
+               dplyr::filter(Congruent.Full.Partial == "partial") %>%
+                 dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+                 dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, y = ms, ymin = ms - se, ymax = ms + se), width = 0.1) +
+  scale_x_discrete(labels = c('Small','Large')) +
+  scale_linetype_manual(name = "Response hand", labels = c("Left", "Right"),  values = c("solid", "dotted")) +
+  ggtitle("B: Partially Congruent") +
+  ylim(460, 560) +
+  ylab("Reaction time (ms)") +
+  xlab("Number magnitude") +
+  theme_plot +
+  theme(legend.position = c(0.25, 0.85), legend.key.height = unit(0, 'cm'), legend.key = element_blank(), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 13, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7))
+```
+
+## Fully congruent vs partially congruent - linear regression and t-tests for digits condition (Figures 8)
+
+```{r}
+"computing dRT for full congruent"
+drt.congruent.digits <- fully.partial.digits %>%
+  dplyr::filter(Congruent.Full.Partial == "full") %>%
+  dplyr::group_by(number, key_response, ppid) %>%
+  dplyr::summarise(meanMS = mean(ms)) %>%
+  dplyr::ungroup() %>%
+  tidyr::pivot_wider(names_from = key_response, values_from = meanMS) %>%
+  dplyr::group_by(number, ppid) %>%
+  dplyr::summarise(drt = (l - a)) %>%
+  tidyr::drop_na()
+
+#frequentist regression on mean drt values
+congruent.n.mod <- lm(drt ~ number, data = drt.congruent.digits %>%
+                        dplyr::group_by(number) %>%
+                        dplyr::summarise(drt = mean(drt)))
+
+summary(congruent.n.mod)
+
+# bayesian regression on mean drt values
+regressionBF(drt ~ number, data = drt.congruent.n %>%
+               dplyr::group_by(number) %>%
+               dplyr::summarise(drt = mean(drt)))
+
+# calculating mean and SEM of drt
+drt.congruent.n.error <- summarySE(drt.congruent.n, measurevar = "drt", groupvars = c("number"))
+
+congruent.lin.mod <- ggplot() +
+  geom_hline(yintercept = 0) +
+  geom_point(data = drt.congruent.n.error, mapping = aes(x = number, y = drt)) +
+  geom_abline(slope = coef(congruent.n.mod)["number"], 
+              intercept = coef(congruent.n.mod)["(Intercept)"], linetype = "dashed") +
+  geom_errorbar(data = drt.congruent.n.error, mapping = aes(x = number, y = drt, ymin = drt - se, ymax = drt + se), width = 0.1) +
+  ggtitle("A: Congruent") +
+  ylab("dRT (s)") +
+  xlab("Non-Symbolic Numerals") +
+  ylim(-80, 80) +
+  theme_plot +
+  theme(legend.position = "none", legend.direction = "vertical", legend.key.height = unit(0, 'cm'), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 13, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7)) 
+
+
+
+```
+
+
+## Numerosity - full vs partial congruency
+
+```{r}
+"Filtering numerosity data for fully vs partial congruent analysis."
+fully.partial.numerosity <- fully.partial %>%
+  dplyr::filter(Condition == "Numerosity")
+
+"computing ANOVA"
+aov.f.p <- aov_car(ms ~ hand * magnitude * Congruent.Full.Partial + Error(ppid/hand * magnitude * Congruent.Full.Partial),
+                 anova_table = list(es = "pes"),
+                 data = fully.partial.numerosity)
+aov.f.p
+
+"means and SEMs for plotting data"
+summary.f.p <- summarySE(fully.partial.numerosity, measurevar = "ms", groupvars = c("Congruent.Full.Partial", "hand", "magnitude"))
+
+"full congruency plots"
+ggplot() +
+  geom_point(data = summary.f.p %>%
+               dplyr::filter(Congruent.Full.Partial == "full") %>%
+               dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+               dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, y = ms)) +
+  geom_line(data = summary.f.p %>%
+              dplyr::filter(Congruent.Full.Partial == "full") %>%
+              dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+              dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, linetype = as.factor(hand), group = as.factor(hand), y = ms)) +
+  geom_errorbar(data = summary.f.p %>%
+               dplyr::filter(Congruent.Full.Partial == "full") %>%
+                 dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+                 dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, y = ms, ymin = ms - se, ymax = ms + se), width = 0.1) +
+  scale_x_discrete(labels = c('Small','Large')) +
+  scale_linetype_manual(name = "Response hand", labels = c("Left", "Right"),  values = c("solid", "dotted")) +
+  ggtitle("A: Fully Congruent") +
+  ylim(460, 560) +
+  ylab("Reaction time (ms)") +
+  xlab("Number magnitude") +
+  theme_plot +
+  theme(legend.position = c(0.25, 0.85), legend.key.height = unit(0, 'cm'), legend.key = element_blank(), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 13, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7))
+  
+"partial congrunecy plots"  
+ggplot() +
+  geom_point(data = summary.f.p %>%
+               dplyr::filter(Congruent.Full.Partial == "partial") %>%
+               dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+               dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, y = ms)) +
+  geom_line(data = summary.f.p %>%
+              dplyr::filter(Congruent.Full.Partial == "partial") %>%
+              dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+              dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, linetype = as.factor(hand), group = as.factor(hand), y = ms)) +
+  geom_errorbar(data = summary.f.p %>%
+               dplyr::filter(Congruent.Full.Partial == "partial") %>%
+                 dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+                 dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, y = ms, ymin = ms - se, ymax = ms + se), width = 0.1) +
+  scale_x_discrete(labels = c('Small','Large')) +
+  scale_linetype_manual(name = "Response hand", labels = c("Left", "Right"),  values = c("solid", "dotted")) +
+  ggtitle("B: Partially Congruent") +
+  #ylim(460, 560) +
+  ylab("Reaction time (ms)") +
+  xlab("Number magnitude") +
+  theme_plot +
+  theme(legend.position = c(0.25, 0.85), legend.key.height = unit(0, 'cm'), legend.key = element_blank(), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 13, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7))
+
+"plot saving"
 
 
 ```
