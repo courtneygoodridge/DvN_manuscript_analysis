@@ -70,8 +70,8 @@ library(effsize)
 Save data into your working directory. If you do not know what your working directory is, run the getwd() function in the command line. Once your data is saved in this location, you can run the next code chuck to load the data into R Studio.
 
 ```{r}
-dat_missing <- read_excel(here::here("Data/Session1.xlsx"))
-dat <- read_excel(here::here("Data/Session2_combine.xlsx"), 2)
+dat_missing <- read_excel(here::here("DvN_manuscript_analysis/Data/Session1.xlsx"))
+dat <- read_excel(here::here("DvN_manuscript_analysis/Data/Session2_combine.xlsx"), 2)
 ```
 
 ## Selcting relevant columns for analysis
