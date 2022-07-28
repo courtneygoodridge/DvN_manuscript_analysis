@@ -1,0 +1,715 @@
+---
+title: "Additional analysis for SNARC effect"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This script contains extra analysis (linear regression + t-tests on coefficients) that did not make it in the updated manuscript. 
+
+## Packages 
+
+```{r}
+if(!require(knitr)) install.packages("knitr")
+library(knitr)
+
+if(!require(here)) install.packages("here")
+library(here)
+
+if(!require(readxl)) install.packages("readxl")
+library(readxl)
+
+if(!require(ggplot2)) install.packages("ggplot2")
+library(ggplot2)
+
+if(!require(dplyr)) install.packages("dplyr")
+library(dplyr)
+
+if(!require(tidyr)) install.packages("tidyr")
+library(tidyr)
+
+if(!require(afex)) install.packages("afex")
+library(afex)
+
+if(!require(lme4)) install.packages("lme4")
+library(lme4)
+
+if(!require(lmerTest)) install.packages("lmerTest")
+library(lmerTest)
+
+if(!require(Rmisc)) install.packages("Rmisc")
+library(Rmisc)
+
+if(!require(BayesFactor)) install.packages("BayesFactor")
+library(here)
+
+if(!require(emmeans)) install.packages("emmeans")
+library(emmeans)
+
+if(!require(gridExtra)) install.packages("gridExtra")
+library(here)
+
+if(!require(ez)) install.packages("ez")
+library(ez)
+
+if(!require(WebPower)) install.packages("WebPower")
+library(WebPower)
+
+if(!require(effsize)) install.packages("effsize")
+library(effsize)
+
+if(!require(gridExtra)) install.packages("gridExtra")
+library(gridExtra)
+```
+
+## Create plot theme
+
+This theme is used for every plot within the manuscript. 
+
+```{r}
+theme_plot <- theme(axis.title.x = element_text(size = 15), axis.text.x = element_text(size = 15), axis.title.y = element_text(size = 15), axis.text.y = element_text(size = 15), title = element_text(size = 18), legend.title = element_text(size = 15), legend.text = element_text(size = 15), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))
+```
+
+## Load and clean data
+
+```{r}
+dat_main <- read.csv(here::here("DvN_manuscript_analysis/Data/dat_main.csv"))
+
+"1) filtering out physiologically implausible RTs (i.e. < .15 s)"
+dat_main <- dat_main %>%
+  dplyr::filter(correct == 1) %>%
+  dplyr::filter(rt >= 0.15)
+
+"2) calculating participant means and sds for RTs"
+meanrt_ppid <- dat_main %>%
+  dplyr::filter(correct == 1) %>%
+  dplyr::group_by(ppid, hand, Congruent, magnitude) %>%
+  dplyr::summarise(mean_rt = mean(rt), sd_rt = sd(rt)) %>%
+  dplyr::mutate(mean_3_sd = mean_rt + (3 * sd_rt))
+
+"3) merging 3 SD threshold with main dataframe"
+dat_main <- merge(dat_main, meanrt_ppid, by = c("ppid", "hand", "Congruent", "magnitude"))
+
+"4) producing outliers tag"
+dat_main <- dat_main %>%
+  dplyr::group_by(ppid, hand, Congruent, magnitude) %>%
+  dplyr::mutate(outlier = rt >= mean_3_sd) 
+
+"5) converting RT to milliseconds"
+dat_main <- dat_main %>%
+  dplyr::mutate(ms = rt * 1000)
+
+"6) calculating numerosity magnitude"
+cong <- dat_main %>%
+  dplyr::filter(Congruent == "Cong") %>%
+  dplyr::mutate(numerosity.magnitude = magnitude)
+
+incong <- dat_main %>%
+  dplyr::filter(Congruent == "Incong") %>%
+  dplyr::mutate(numerosity.magnitude = case_when(magnitude == "large" & Condition == "Digit" ~ "large",
+                                                 magnitude == "small" & Condition == "Digit" ~ "small",
+                                                 magnitude == "small" & Condition == "Numerosity" ~ "large",
+                                                 magnitude == "large" & Condition == "Numerosity" ~ "small"))
+dat_main <- dplyr::bind_rows(cong, incong)
+```
+
+
+## Figure 3: Mean plots for dRT (symbolic numerals - digits)
+
+1) Calculating drt and error bars for congruent condition. This is done for each participant individually. Also calculates linear regression for mean drt for plotting
+
+2) Calculating drt and error bars for incongruent condition. This is done for each participant individually. Also calculates linear regression for mean drt for plotting
+
+```{r}
+"1) Congruent"
+drt.congruent.digits <- dat_main %>%
+  dplyr::filter(Congruent == "Cong", Condition == "Digit", ppid != 45, ppid != 5, outlier == FALSE) %>%
+  dplyr::group_by(number, key_response, ppid) %>%
+  dplyr::summarise(meanMS = mean(ms)) %>%
+  dplyr::ungroup() %>%
+  tidyr::pivot_wider(names_from = key_response, values_from = meanMS) %>%
+  dplyr::group_by(number, ppid) %>%
+  dplyr::summarise(drt = (l - a)) %>%
+  tidyr::drop_na()
+
+# frequentist linear regression on mean drt values
+congruent.digits.mod <- lm(drt ~ number, data = drt.congruent.digits %>%
+                        dplyr::group_by(number) %>%
+                        dplyr::summarise(drt = mean(drt)))
+
+summary(congruent.digits.mod)
+
+# bayesian regression on mean drt values
+regressionBF(drt ~ number, data = drt.congruent.digits %>%
+               dplyr::group_by(number) %>%
+               dplyr::summarise(drt = mean(drt)))
+
+# calculating mean and SEM of drt
+drt.congruent.error <- summarySE(drt.congruent.digits, measurevar = "drt", groupvars = c("number"))
+
+# plotting linear regression of drt for congruent condition
+drt.congruent.plot <- ggplot() +
+  geom_hline(yintercept = 0) +
+  geom_point(data = drt.congruent.error, mapping = aes(x = number, y = drt)) +
+  geom_abline(slope = coef(congruent.digits.mod)["number"], 
+              intercept = coef(congruent.digits.mod)["(Intercept)"], linetype = "dashed") +
+  geom_errorbar(data = drt.congruent.error, mapping = aes(x = number, y = drt, ymin = drt - se, ymax = drt + se), width = 0.1) +
+  ylim(-80, 80) +
+  ggtitle("A: Congruent") +
+  ylab("dRT (ms)") +
+  xlab("Number") +
+  theme_plot +
+  theme(legend.position = c(0.25, 0.85), legend.key.height = unit(0, 'cm'), legend.key = element_blank(), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 12, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7)) 
+
+"2) Incongruent"
+drt.incongruent.digits <- dat_main %>%
+  dplyr::filter(Congruent == "Incong", Condition == "Digit", ppid != 45, ppid != 5, outlier == FALSE) %>%
+  dplyr::group_by(number, key_response, ppid) %>%
+  dplyr::summarise(meanMS = mean(ms)) %>%
+  dplyr::ungroup() %>%
+  tidyr::pivot_wider(names_from = key_response, values_from = meanMS) %>%
+  dplyr::group_by(number, ppid) %>%
+  dplyr::summarise(drt = (l - a)) %>%
+  tidyr::drop_na()
+
+# frequentist linear regression on mean drt values
+incongruent.digits.mod <- lm(drt ~ number, data = drt.incongruent.digits %>%
+                        dplyr::group_by(number) %>%
+                        dplyr::summarise(drt = mean(drt)))
+
+summary(incongruent.digits.mod)
+
+# bayesian regression on mean drt values
+regressionBF(drt ~ number, data = drt.congruent.digits %>%
+               dplyr::group_by(number) %>%
+               dplyr::summarise(drt = mean(drt)))
+
+
+# mean and SEM of drt
+drt.incongruent.error <- summarySE(drt.incongruent.digits, measurevar = "drt", groupvars = c("number"))
+
+# plotting linear regression of drt for congruent condition
+drt.incongruent.plot <- ggplot() +
+  geom_hline(yintercept = 0) +
+  geom_point(data = drt.incongruent.error, mapping = aes(x = number, y = drt)) +
+  geom_abline(slope = coef(incongruent.digits.mod)["number"], 
+              intercept = coef(incongruent.digits.mod)["(Intercept)"], linetype = "dashed") +
+  geom_errorbar(data = drt.incongruent.error, mapping = aes(x = number, y = drt, ymin = drt - se, ymax = drt + se), width = 0.1) +
+  ylim(-80, 80) +
+  ggtitle("B: Incongruent") +
+  ylab("dRT (ms)") +
+  xlab("Number") +
+  theme_plot +
+  theme(legend.position = c(0.25, 0.85), legend.key.height = unit(0, 'cm'), legend.key = element_blank(), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 12, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7)) 
+
+"saving plots"
+g <- arrangeGrob(drt.congruent.plot, drt.incongruent.plot, nrow = 1)
+  ggsave(here::here("DvN_manuscript_analysis/Figures/results.fig.3.tiff"), g,  width = 15, height = 7, units = 'cm', dpi = 900, type = 'cairo')
+```
+
+
+## T-test for digits
+
+1) Compute linear regression for each participant and save coefficients into a dataframe for congruent condition. Computes one sample t-tests and effect sizes.  
+
+2) Compute linear regression for each participant and save coefficients into a dataframe for incongruent condition. Computes one sample t-tests and effect sizes.   
+
+3) Paired samples t-test
+
+```{r}
+"1) Congruent"
+coef.estimates.cong <- rep(NA, 52)
+
+for (i in c(drt.congruent.digits %>%
+            dplyr::group_by(ppid) %>%
+            dplyr::slice(1))$ppid){
+  # Create temporary data frame:
+drt_tmp <- drt.congruent.digits[drt.congruent.digits$ppid == i,]
+  # Perform linear regression:
+reg_result <- lm(drt ~ number, data = drt_tmp)
+  # Get coefficient:
+tmp_coef <- coef(reg_result)
+# Store coefficient and intercept for each subject:
+coef.estimates.cong[i] <- tmp_coef[2]}
+
+coef.estimates.cong <- as.data.frame(coef.estimates.cong) %>%
+  tidyr::drop_na()
+
+ttestBF(coef.estimates.cong$coef.estimates.cong, mu = 0) # bayesian one sampled t-test
+t.test(coef.estimates.cong$coef.estimates.cong, mu = 0, alternative = "two.sided") # frequentist one sampled t-test 
+cohen.d(coef.estimates.cong$coef.estimates.cong, f = NA, mu = 0) # effect size
+
+"2) Incongruent"
+coef.estimates.incong <- rep(NA, 52) # empty vector for coefs
+
+for (i in c(drt.incongruent.digits %>%
+            dplyr::group_by(ppid) %>%
+            dplyr::slice(1))$ppid){
+  # Create temporary data frame:
+drt_tmp <- drt.incongruent.digits[drt.incongruent.digits$ppid == i,]
+  # Perform linear regression:
+reg_result <- lm(drt ~ number, data = drt_tmp)
+  # Get coefficient:
+tmp_coef <- coef(reg_result)
+# Store coefficient and intercept for each subject:
+coef.estimates.incong[i] <- tmp_coef[2]}
+
+coef.estimates.incong <- as.data.frame(coef.estimates.incong) %>%
+  tidyr::drop_na()
+
+ttestBF(coef.estimates.incong$coef.estimates.incong, mu = 0) # bayesian one sampled t-test
+t.test(coef.estimates.incong$coef.estimates.incong, mu = 0, alternative = "two.sided") # frequentist one sampled t-test
+cohen.d(coef.estimates.incong$coef.estimates.incong, f = NA, mu = 0) # effect size
+
+"3) paired samples t-test"
+ttestBF(coef.estimates.cong$coef.estimates.cong, coef.estimates.incong$coef.estimates.incong) # bayesian paired sampples t-test
+t.test(coef.estimates.cong$coef.estimates.cong, coef.estimates.incong$coef.estimates.incong, paired = TRUE) # frequentist paired samples t-test
+cohen.d(coef.estimates.cong$coef.estimates.cong, coef.estimates.incong$coef.estimates.incong) # effect size
+```
+
+## Figure 5: Mean plots for dRT (non-symbolic numerals - numerosity)
+
+1) Calculating drt and error bars for congruent condition. This is done for each participant individually. Also calculates linear regression for mean drt for plotting
+
+2) Calculating drt and error bars for incongruent condition. This is done for each participant individually. Also calculates linear regression for mean drt for plotting
+
+```{r}
+"1)"
+drt.congruent.n <- numerosity.dat %>%
+  dplyr::filter(Congruent == "Cong") %>%
+  dplyr::group_by(number, key_response, ppid) %>%
+  dplyr::summarise(meanMS = mean(ms)) %>%
+  dplyr::ungroup() %>%
+  tidyr::pivot_wider(names_from = key_response, values_from = meanMS) %>%
+  dplyr::group_by(number, ppid) %>%
+  dplyr::summarise(drt = (l - a)) %>%
+  tidyr::drop_na()
+
+# frequentist regression on mean drt values
+congruent.n.mod <- lm(drt ~ number, data = drt.congruent.n %>%
+                        dplyr::group_by(number) %>%
+                        dplyr::summarise(drt = mean(drt)))
+
+summary(congruent.n.mod)
+
+# bayesian regression on mean drt values
+regressionBF(drt ~ number, data = drt.congruent.n %>%
+               dplyr::group_by(number) %>%
+               dplyr::summarise(drt = mean(drt)))
+
+# calculating mean and SEM of drt
+drt.congruent.n.error <- summarySE(drt.congruent.n, measurevar = "drt", groupvars = c("number"))
+
+# plotting linear regression
+congruent.lin.mod <- ggplot() +
+  geom_hline(yintercept = 0) +
+  geom_point(data = drt.congruent.n.error, mapping = aes(x = number, y = drt)) +
+  geom_abline(slope = coef(congruent.n.mod)["number"], 
+              intercept = coef(congruent.n.mod)["(Intercept)"], linetype = "dashed") +
+  geom_errorbar(data = drt.congruent.n.error, mapping = aes(x = number, y = drt, ymin = drt - se, ymax = drt + se), width = 0.1) +
+  ggtitle("A: Congruent") +
+  ylab("dRT (s)") +
+  xlab("Non-Symbolic Numerals") +
+  ylim(-80, 80) +
+  theme_plot +
+  theme(legend.position = "none", legend.direction = "vertical", legend.key.height = unit(0, 'cm'), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 12, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7)) 
+
+"2)"
+drt.incongruent.n <- numerosity.dat %>%
+  dplyr::mutate(number = case_when(number == 1 ~ 5,
+                                   number == 2 ~ 4,
+                                   number == 3 ~ 3,
+                                   number == 4 ~ 2,
+                                   number == 5 ~ 1)) %>%
+  dplyr::filter(Congruent == "Incong") %>%
+  dplyr::group_by(number, key_response, ppid) %>%
+  dplyr::summarise(meanMS = mean(ms)) %>%
+  dplyr::ungroup() %>%
+  tidyr::pivot_wider(names_from = key_response, values_from = meanMS) %>%
+  dplyr::group_by(number, ppid) %>%
+  dplyr::summarise(drt = (l - a)) %>%
+  tidyr::drop_na() %>%
+  dplyr::ungroup()
+
+# frequentist regression on mean drt values
+incongruent.n.mod <- lm(drt ~ number, data = drt.incongruent.n %>%
+                          dplyr::group_by(number) %>%
+                          dplyr::summarise(drt = mean(drt)))
+
+summary(incongruent.n.mod)
+
+# bayesian regression on mean drt values
+regressionBF(drt ~ number, data = drt.incongruent.n %>%
+               dplyr::group_by(number) %>%
+               dplyr::summarise(drt = mean(drt)))
+
+# calculating mean and SEM of drt
+drt.incongruent.n.error <- summarySE(drt.incongruent.n, measurevar = "drt", groupvars = c("number"))
+
+incongruent.lin.mod <- ggplot() +
+  geom_hline(yintercept = 0) +
+  geom_point(data = drt.incongruent.n.error, mapping = aes(x = number, y = drt)) +
+  geom_abline(slope = coef(incongruent.n.mod)["number"], 
+              intercept = coef(incongruent.n.mod)["(Intercept)"], linetype = "dashed") +
+  geom_errorbar(data = drt.incongruent.n.error, mapping = aes(x = number, y = drt, ymin = drt - se, ymax = drt + se), width = 0.1) +
+  ggtitle("B: Incongruent") +
+  ylab("dRT (s)") +
+  xlab("Non-Symbolic Numerals") +
+  ylim(-80, 80) +
+  theme_plot +
+  theme(legend.position = "none", legend.direction = "vertical", legend.key.height = unit(0, 'cm'), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 12, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7)) 
+
+g <- arrangeGrob(congruent.lin.mod, incongruent.lin.mod, nrow = 1)
+  ggsave(here::here("DvN_manuscript_analysis/Figures/results.fig.5.tiff"), g,  width = 15, height = 7, units = 'cm', dpi = 900, type = 'cairo')
+```
+
+## T-test for nunerosity
+
+1) Compute linear regression for each participant and save coefficients into a dataframe for congruent condition. Computes one sample t-tests and effect sizes.  
+
+2) Compute linear regression for each participant and save coefficients into a dataframe for incongruent condition. Computes one sample t-tests and effect sizes.   
+
+3) Paired samples t-test
+
+```{r}
+"1) Congruent"
+coef.estimates.cong.n <- rep(NA, 52) # create empty vector for coefficients
+
+#linear regression for each participant
+for (i in c(drt.congruent.n %>%
+            dplyr::group_by(ppid) %>%
+            dplyr::slice(1))$ppid){
+  # Create temporary data frame:
+drt_tmp <- drt.congruent.n[drt.congruent.n$ppid == i,]
+  # Perform linear regression:
+reg_result <- lm(drt ~ number, data = drt_tmp)
+  # Get coefficient:
+tmp_coef <- coef(reg_result)
+# Store coefficient for each subject:
+coef.estimates.cong.n[i] <- tmp_coef[2]}
+
+coef.estimates.cong.n <- as.data.frame(coef.estimates.cong.n) %>%
+  tidyr::drop_na()
+
+t.test(coef.estimates.cong.n$coef.estimates.cong.n, mu = 0, alternative = "two.sided") # one sample t-test
+ttestBF(coef.estimates.cong.n$coef.estimates.cong.n, mu = 0) # bayesian one sample t-test
+cohen.d(coef.estimates.cong.n$coef.estimates.cong.n, f = NA, mu = 0) # effect size.
+
+
+"2)"
+coef.estimates.incong.n <- rep(NA, 52)
+
+"linear regression for each participant"
+for (i in c(drt.incongruent.n %>%
+            dplyr::group_by(ppid) %>%
+            dplyr::slice(1))$ppid){
+  # Create temporary data frame:
+drt_tmp <- drt.incongruent.n[drt.incongruent.n$ppid == i,]
+  # Perform linear regression:
+reg_result <- lm(drt ~ number, data = drt_tmp)
+  # Get coefficient:
+tmp_coef <- coef(reg_result)
+# Store coefficient and intercept for each subject:
+coef.estimates.incong.n[i] <- tmp_coef[2]}
+
+coef.estimates.incong.n <- as.data.frame(coef.estimates.incong.n) %>%
+  tidyr::drop_na()
+
+t.test(coef.estimates.incong.n$coef.estimates.incong.n, mu = 0, alternative = "two.sided") # one sample t-test
+ttestBF(coef.estimates.incong.n$coef.estimates.incong.n, mu = 0) # bayesian one sample t-test
+cohen.d(coef.estimates.incong.n$coef.estimates.incong.n, f = NA, mu = 0) # effect size.
+
+"3)"
+t.test(coef.estimates.cong.n$coef.estimates.cong.n, coef.estimates.incong.n$coef.estimates.incong.n, paired = TRUE) # paired samples t-test
+ttestBF(coef.estimates.cong.n$coef.estimates.cong.n, coef.estimates.incong.n$coef.estimates.incong.n) # bayesian paired samples t-test
+cohen.d(coef.estimates.cong.n$coef.estimates.cong.n, coef.estimates.incong.n$coef.estimates.incong.n) # effect size
+```
+
+## Figure 6: Hand/Number Congruency * Presentation Congruency * Condition analysis
+
+Significant interaction between Hand/Number Congruency and Condition. Participants respond more slowly when hand and number information is in congruent when presented with Digits. When hand and number information is congruent, response time between digits and numerosity conditions are largely the same. 
+
+1) Create key assignment variable by combining left/right small/large variable as congruent (and vice versa)
+
+2) descriptives
+
+3) compute ANOVA
+
+4) compute means and SEMS for plotting
+
+5) plots for key assignment congruency
+
+```{r}
+"1)"
+digits.data <- dat_main %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(Condition == "Digit", ppid != 45, ppid != 5, outlier == FALSE) %>%
+  dplyr::mutate(hand.num.congruent = case_when(number > 3 & hand == "right" ~ "Cong",
+                                               number < 3 & hand == "left" ~ "Cong",
+                                               number > 3 & hand == "left" ~ "Incong",
+                                               number < 3 & hand == "right" ~ "Incong"))
+
+numerosity.dat <- dat_main %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(Condition == "Numerosity", ppid != 45, ppid != 5, outlier == FALSE) %>%
+   dplyr::mutate(hand.num.congruent = case_when(number > 3 & hand == "right" ~ "Cong",
+                                               number < 3 & hand == "left" ~ "Cong",
+                                               number > 3 & hand == "left" ~ "Incong",
+                                               number < 3 & hand == "right" ~ "Incong")) %>%
+  dplyr::mutate(magnitude = case_when(number < 3 & Congruent ==  "Incong" ~ "large",
+                                      number > 3 & Congruent ==  "Incong" ~ "small",
+                                      number < 3 & Congruent == "Cong" ~ "small",
+                                      number > 3 & Congruent == "Cong" ~ "large"))
+
+
+cong.incong.key <- dplyr::bind_rows(digits.data, numerosity.dat)
+
+"2)"
+# descriptives
+cong.incong.key %>%
+  dplyr::group_by(hand.num.congruent, Congruent, Condition) %>%
+  dplyr::summarise(m = mean(ms))
+
+"3)"
+aov.c.i.key <- aov_car(ms ~ hand.num.congruent * Congruent * Condition + Error(ppid/hand.num.congruent * Congruent * Condition),
+                 anova_table = list(es = "pes"),
+                 data = cong.incong.key)
+
+aov.c.i.key
+
+"4)"
+summary.c.i.key <- summarySE(cong.incong.key, measurevar = "ms", groupvars = c("hand.num.congruent", "Congruent", "Condition"))
+
+"5)"
+cong.plot <- ggplot() +
+  geom_point(data = summary.c.i.key %>%
+               dplyr::filter(Congruent == "Cong"), mapping = aes(x = hand.num.congruent, y = ms)) +
+  geom_line(data = summary.c.i.key %>%
+              dplyr::filter(Congruent == "Cong"), mapping = aes(x = hand.num.congruent, linetype = as.factor(Condition), group = as.factor(Condition), y = ms)) +
+  geom_errorbar(data = summary.c.i.key %>%
+               dplyr::filter(Congruent == "Cong"), mapping = aes(x = hand.num.congruent, y = ms, ymin = ms - se, ymax = ms + se), width = 0.1) +
+  scale_x_discrete(labels = c('Congruent','Incongruent')) +
+  scale_linetype_manual(name = "Condition", labels = c("Symbolic", "Non-Symbolic"),  values = c("solid", "dotted")) +
+  ggtitle("A: Presentation: Congruent") +
+  ylim(450, 560) +
+  ylab("Reaction time (ms)") +
+  xlab("Key assignment") +
+  theme_plot +
+  theme(legend.position = c(0.25, 0.85), legend.key.height = unit(0, 'cm'), legend.key = element_blank(), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 12, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7))
+  
+incong.plot <- ggplot() +
+  geom_point(data = summary.c.i.key %>%
+               dplyr::filter(Congruent == "Incong"), mapping = aes(x = hand.num.congruent, y = ms)) +
+  geom_line(data = summary.c.i.key %>%
+              dplyr::filter(Congruent == "Incong"), mapping = aes(x = hand.num.congruent, linetype = as.factor(Condition), group = as.factor(Condition), y = ms)) +
+  geom_errorbar(data = summary.c.i.key %>%
+               dplyr::filter(Congruent == "Incong"), mapping = aes(x = hand.num.congruent, y = ms, ymin = ms - se, ymax = ms + se), width = 0.1) +
+  scale_x_discrete(labels = c('Congruent','Incongruent')) +
+  scale_linetype_manual(name = "Condition", labels = c("Symbolic", "Non-Symbolic"),  values = c("solid", "dotted")) +
+  ggtitle("B: Presentation: Incongruent") +
+  ylim(450, 560) +
+  ylab("Reaction time (ms)") +
+  xlab("Key assignment") +
+  theme_plot +
+  theme(legend.position = "none", legend.key.height = unit(0, 'cm'), legend.key = element_blank(), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 12, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7))
+
+"plot saving"
+g <- arrangeGrob(cong.plot, incong.plot, nrow = 1)
+  ggsave(here::here("DvN_manuscript_analysis/Figures/results.fig.6.tiff"), g,  width = 15, height = 7, units = 'cm', dpi = 900, type = 'cairo')
+```
+
+## Fully congruent vs partially congruent 
+
+In the original study, only some conditions within the "congruent" condition were "fully" congruent. For example, when the 1 digit was presented just once, the 2 digit presented twice, the 4 digit presented 4 times, and the 5 digit presented 5 times. The remaining conditions are partially congruent because the digit and numerosity of the digit are congruent, but not the pattern. 
+
+For this next analysis, we want to know whether there is  difference in response between these fully and partially congruent conditions.
+
+1) filter only congrueny presentation conditions
+
+2) create fully and partially congruent conditions
+
+```{r}
+"1)"
+fully.partial <- dat_main %>%
+  dplyr::filter(Congruent == "Cong", ppid != 45, ppid != 5, outlier == FALSE)
+
+"2)"
+fully.partial <- fully.partial %>%
+  dplyr::mutate(Congruent.Full.Partial = case_when(Condition == "Digit" & number == 1 ~ "full",
+                                                   Condition == "Digit" & number ==  2 ~ "partial",
+                                                   Condition == "Numerosity" & number == 1 ~ "partial",
+                                                   Condition == "Numerosity" & number == 2 ~ "full",
+                                                   Condition == "Digit" & number == 4 ~ "full",
+                                                   Condition == "Digit" & number == 5 ~ "partial",
+                                                   Condition == "Numerosity" & number == 4 ~ "partial",
+                                                   Condition == "Numerosity" & number == 5 ~ "full"))
+```
+
+## Figure 7: Fully congruent vs partially congruent - Repeated Measures ANOVA for digits
+
+1) filter just for digits data
+
+2) descriptives
+
+3) compute ANOVA
+
+4) compute means and SEMs for plotting
+
+5) plotting for fully and partially congruent conditions.
+
+```{r}
+"1)"
+fully.partial.digits <- fully.partial %>%
+  dplyr::filter(Condition == "Digit")
+
+"2)"
+fully.partial.digits %>%
+  dplyr::group_by(hand, magnitude, Congruent.Full.Partial) %>%
+  dplyr::summarise(m = mean(ms))
+
+
+"3)"
+aov.f.p <- aov_car(ms ~ hand * magnitude * Congruent.Full.Partial + Error(ppid/hand * magnitude * Congruent.Full.Partial),
+                 anova_table = list(es = "pes"),
+                 data = fully.partial.digits)
+aov.f.p
+
+"4)"
+summary.f.p <- summarySE(fully.partial.digits, measurevar = "ms", groupvars = c("Congruent.Full.Partial", "hand", "magnitude"))
+
+"5)"
+full.cong.plot <- ggplot() +
+  geom_point(data = summary.f.p %>%
+               dplyr::filter(Congruent.Full.Partial == "full") %>%
+               dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+               dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, y = ms)) +
+  geom_line(data = summary.f.p %>%
+              dplyr::filter(Congruent.Full.Partial == "full") %>%
+              dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+              dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, linetype = as.factor(hand), group = as.factor(hand), y = ms)) +
+  geom_errorbar(data = summary.f.p %>%
+               dplyr::filter(Congruent.Full.Partial == "full") %>%
+                 dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+                 dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, y = ms, ymin = ms - se, ymax = ms + se), width = 0.1) +
+  scale_x_discrete(labels = c('Small','Large')) +
+  scale_linetype_manual(name = "Response hand", labels = c("Left", "Right"),  values = c("solid", "dotted")) +
+  ggtitle("A: Fully Congruent") +
+  ylim(450, 560) +
+  ylab("Reaction time (ms)") +
+  xlab("Number magnitude") +
+  theme_plot +
+  theme(legend.position = c(0.25, 0.85), legend.key.height = unit(0, 'cm'), legend.key = element_blank(), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 12, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7))
+  
+partial.cong.plot <- ggplot() +
+  geom_point(data = summary.f.p %>%
+               dplyr::filter(Congruent.Full.Partial == "partial") %>%
+               dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+               dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, y = ms)) +
+  geom_line(data = summary.f.p %>%
+              dplyr::filter(Congruent.Full.Partial == "partial") %>%
+              dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+              dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, linetype = as.factor(hand), group = as.factor(hand), y = ms)) +
+  geom_errorbar(data = summary.f.p %>%
+               dplyr::filter(Congruent.Full.Partial == "partial") %>%
+                 dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+                 dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, y = ms, ymin = ms - se, ymax = ms + se), width = 0.1) +
+  scale_x_discrete(labels = c('Small','Large')) +
+  scale_linetype_manual(name = "Response hand", labels = c("Left", "Right"),  values = c("solid", "dotted")) +
+  ggtitle("B: Partially Congruent") +
+  ylim(450, 560) +
+  ylab("Reaction time (ms)") +
+  xlab("Number magnitude") +
+  theme_plot +
+  theme(legend.position = "none", legend.key.height = unit(0, 'cm'), legend.key = element_blank(), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 12, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7))
+
+"plot saving"
+g <- arrangeGrob(full.cong.plot, partial.cong.plot, nrow = 1)
+  ggsave(here::here("DvN_manuscript_analysis/Figures/results.fig.7.tiff"), g,  width = 15, height = 7, units = 'cm', dpi = 900, type = 'cairo')
+```
+
+## Figure 8: Fully congruent vs partially congruent - Repeated Measures ANOVA for numerosity
+
+1) filter just for numerosity data
+
+2) descriptives
+
+3) compute ANOVA
+
+4) compute means and SEMs for plotting
+
+5) plotting for fully and partially congruent conditions.
+
+```{r}
+"1)"
+fully.partial.numerosity <- fully.partial %>%
+  dplyr::filter(Condition == "Numerosity")
+
+"2)"
+fully.partial.numerosity %>%
+  dplyr::group_by(hand, magnitude, Congruent.Full.Partial) %>%
+  dplyr::summarise(m = mean(ms))
+
+"3)"
+aov.f.p <- aov_car(ms ~ hand * magnitude * Congruent.Full.Partial + Error(ppid/hand * magnitude * Congruent.Full.Partial),
+                 anova_table = list(es = "pes"),
+                 data = fully.partial.numerosity)
+aov.f.p
+
+"4)"
+summary.f.p <- summarySE(fully.partial.numerosity, measurevar = "ms", groupvars = c("Congruent.Full.Partial", "hand", "magnitude"))
+
+"5)"
+full.cong.plot <- ggplot() +
+  geom_point(data = summary.f.p %>%
+               dplyr::filter(Congruent.Full.Partial == "full") %>%
+               dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+               dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, y = ms)) +
+  geom_line(data = summary.f.p %>%
+              dplyr::filter(Congruent.Full.Partial == "full") %>%
+              dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+              dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, linetype = as.factor(hand), group = as.factor(hand), y = ms)) +
+  geom_errorbar(data = summary.f.p %>%
+               dplyr::filter(Congruent.Full.Partial == "full") %>%
+                 dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+                 dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, y = ms, ymin = ms - se, ymax = ms + se), width = 0.1) +
+  scale_x_discrete(labels = c('Small','Large')) +
+  scale_linetype_manual(name = "Response hand", labels = c("Left", "Right"),  values = c("solid", "dotted")) +
+  ggtitle("A: Fully Congruent") +
+  ylim(450, 560) +
+  ylab("Reaction time (ms)") +
+  xlab("Number magnitude") +
+  theme_plot +
+  theme(legend.position = c(0.25, 0.85), legend.key.height = unit(0, 'cm'), legend.key = element_blank(), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 12, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7))
+  
+partial.cong.plot <- ggplot() +
+  geom_point(data = summary.f.p %>%
+               dplyr::filter(Congruent.Full.Partial == "partial") %>%
+               dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+               dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, y = ms)) +
+  geom_line(data = summary.f.p %>%
+              dplyr::filter(Congruent.Full.Partial == "partial") %>%
+              dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+              dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, linetype = as.factor(hand), group = as.factor(hand), y = ms)) +
+  geom_errorbar(data = summary.f.p %>%
+               dplyr::filter(Congruent.Full.Partial == "partial") %>%
+                 dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))) %>%
+                 dplyr::mutate(hand = factor(hand, levels = c("left", "right"))), mapping = aes(x = magnitude, y = ms, ymin = ms - se, ymax = ms + se), width = 0.1) +
+  scale_x_discrete(labels = c('Small','Large')) +
+  scale_linetype_manual(name = "Response hand", labels = c("Left", "Right"),  values = c("solid", "dotted")) +
+  ggtitle("B: Partially Congruent") +
+  ylim(450, 560) +
+  ylab("Reaction time (ms)") +
+  xlab("Number magnitude") +
+  theme_plot +
+  theme(legend.position = "none", legend.key.height = unit(0, 'cm'), legend.key = element_blank(), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 12, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7))
+
+
+"plot saving"
+g <- arrangeGrob(full.cong.plot, partial.cong.plot, nrow = 1)
+  ggsave(here::here("DvN_manuscript_analysis/Figures/results.fig.8.tiff"), g,  width = 15, height = 7, units = 'cm', dpi = 900, type = 'cairo')
+```
+
+
