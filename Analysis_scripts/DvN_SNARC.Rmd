@@ -297,25 +297,20 @@ aov.n
 
 "2) descriptives"
 numerosity.dat %>%
-  dplyr::group_by(hand, magnitude, Congruent) %>%
+  dplyr::group_by(Congruent, hand, magnitude) %>%
   dplyr::summarise(m = mean(ms))
 
 "3)"
-numerosity.dat$magnitude = factor(numerosity.dat$magnitude, levels = c("small", "large"))
-
 summary.n <- summarySE(numerosity.dat, measurevar = "ms", groupvars = c("hand", "magnitude", "Congruent"))
 
 "4) SNARC plots for numerosity condition"
 congruent.snarc <- ggplot() +
   geom_point(data = summary.n %>%
-               dplyr::filter(Congruent == "Cong") %>%
-               dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))), mapping = aes(x = magnitude, y = ms)) +
+               dplyr::filter(Congruent == "Cong"), mapping = aes(x = magnitude, y = ms)) +
   geom_line(data = summary.n %>%
-              dplyr::filter(Congruent == "Cong") %>%
-              dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))), mapping = aes(x = magnitude, linetype = as.factor(hand), group = as.factor(hand), y = ms)) +
+              dplyr::filter(Congruent == "Cong"), mapping = aes(x = magnitude, linetype = as.factor(hand), group = as.factor(hand), y = ms)) +
   geom_errorbar(data = summary.n %>%
-                  dplyr::filter(Congruent == "Cong") %>%
-                  dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))), mapping = aes(x = magnitude, y = ms, ymin = ms - se, ymax = ms + se), width = 0.1) +
+                  dplyr::filter(Congruent == "Cong"), mapping = aes(x = magnitude, y = ms, ymin = ms - se, ymax = ms + se), width = 0.1) +
   scale_x_discrete(labels = c('Small','Large')) +
   scale_linetype_manual(name = "Response hand", labels = c("Left", "Right"),  values = c("solid", "dotted")) +
   ggtitle("A: Congruent") +
