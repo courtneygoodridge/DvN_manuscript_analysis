@@ -212,6 +212,12 @@ dat_main %>%
   dplyr::group_by(Congruent, hand, magnitude) %>%
   dplyr::summarise(m = mean(ms))
 
+View(summarySE(dat_main %>%
+                 dplyr::filter(Condition == "Digit", ppid != 45, ppid != 5, outlier == FALSE), measurevar = "ms", groupvars = c("Congruent")))
+
+View(summarySE(dat_main %>%
+                 dplyr::filter(Condition == "Digit", ppid != 45, ppid != 5, outlier == FALSE), measurevar = "ms", groupvars = c("magnitude")))
+
 "3) calculating mean and SEMs for confidence intervals"
 summary.digits <- summarySE(dat_main %>%
                               dplyr::filter(Condition == "Digit", ppid != 45, ppid != 5, outlier == FALSE), measurevar = "ms", groupvars = c("hand", "magnitude", "Congruent"))
@@ -299,6 +305,12 @@ aov.n
 numerosity.dat %>%
   dplyr::group_by(Congruent, hand, magnitude) %>%
   dplyr::summarise(m = mean(ms))
+
+View(summarySE(numerosity.dat, measurevar = "ms", groupvars = c("Congruent")))
+
+View(summarySE(numerosity.dat, measurevar = "ms", groupvars = c("hand")))
+
+View(summarySE(numerosity.dat, measurevar = "ms", groupvars = c("magnitude")))
 
 "3)"
 summary.n <- summarySE(numerosity.dat, measurevar = "ms", groupvars = c("hand", "magnitude", "Congruent"))
