@@ -303,7 +303,7 @@ aov.n
 
 "2) descriptives"
 numerosity.dat %>%
-  dplyr::group_by(Congruent, hand, magnitude) %>%
+  dplyr::group_by(Congruent, magnitude, hand) %>%
   dplyr::summarise(m = mean(ms))
 
 View(summarySE(numerosity.dat, measurevar = "ms", groupvars = c("Congruent")))
@@ -318,11 +318,14 @@ summary.n <- summarySE(numerosity.dat, measurevar = "ms", groupvars = c("hand", 
 "4) SNARC plots for numerosity condition"
 congruent.snarc <- ggplot() +
   geom_point(data = summary.n %>%
-               dplyr::filter(Congruent == "Cong"), mapping = aes(x = magnitude, y = ms)) +
+               dplyr::filter(Congruent == "Cong") %>%
+               dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))), mapping = aes(x = magnitude, y = ms)) +
   geom_line(data = summary.n %>%
-              dplyr::filter(Congruent == "Cong"), mapping = aes(x = magnitude, linetype = as.factor(hand), group = as.factor(hand), y = ms)) +
+              dplyr::filter(Congruent == "Cong") %>%
+              dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))), mapping = aes(x = magnitude, linetype = as.factor(hand), group = as.factor(hand), y = ms)) +
   geom_errorbar(data = summary.n %>%
-                  dplyr::filter(Congruent == "Cong"), mapping = aes(x = magnitude, y = ms, ymin = ms - se, ymax = ms + se), width = 0.1) +
+                  dplyr::filter(Congruent == "Cong") %>%
+                  dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))), mapping = aes(x = magnitude, y = ms, ymin = ms - se, ymax = ms + se), width = 0.1) +
   scale_x_discrete(labels = c('Small','Large')) +
   scale_linetype_manual(name = "Response hand", labels = c("Left", "Right"),  values = c("solid", "dotted")) +
   ggtitle("A: Congruent") +
@@ -330,15 +333,19 @@ congruent.snarc <- ggplot() +
   ylab("Reaction time (ms)") +
   xlab("Non-Symbolic Numerals") +
   theme_plot +
-  theme(legend.position = c(0.25, 0.85), legend.key.height = unit(0, 'cm'), legend.key = element_blank(), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 12, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7))  
+  theme(legend.position = c(0.25, 0.85), legend.key.height = unit(0, 'cm'), legend.key = element_blank(), legend.key.width = unit(0.5, 'cm'), legend.key.size = unit(0, 'cm'), plot.title = element_text(size = 12, face = "bold"), panel.spacing = unit(2, "lines"), axis.title.x = element_text(size = 9), axis.text.x = element_text(size = 9), axis.title.y = element_text(size = 9), axis.text.y = element_text(size = 9), title = element_text(size = 7), legend.title = element_text(size = 7), legend.text = element_text(size = 7))
+
   
 incongruent.snarc <- ggplot() +
   geom_point(data = summary.n %>%
-               dplyr::filter(Congruent == "Incong"), mapping = aes(x = magnitude, y = ms)) +
+               dplyr::filter(Congruent == "Incong") %>%
+               dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))), mapping = aes(x = magnitude, y = ms)) +
   geom_line(data = summary.n %>%
-               dplyr::filter(Congruent == "Incong"), mapping = aes(x = magnitude, linetype = as.factor(hand), group = as.factor(hand), y = ms)) +
+               dplyr::filter(Congruent == "Incong") %>%
+               dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))), mapping = aes(x = magnitude, linetype = as.factor(hand), group = as.factor(hand), y = ms)) +
   geom_errorbar(data = summary.n %>%
-               dplyr::filter(Congruent == "Incong"), mapping = aes(x = magnitude, y = ms, ymin = ms - se, ymax = ms + se), width = 0.1) +
+               dplyr::filter(Congruent == "Incong") %>%
+               dplyr::mutate(magnitude = factor(magnitude, levels = c("small", "large"))), mapping = aes(x = magnitude, y = ms, ymin = ms - se, ymax = ms + se), width = 0.1) +
   scale_x_discrete(labels = c('Small','Large')) +
   scale_linetype_manual(name = "Response hand", labels = c("Left", "Right"),  values = c("solid", "dotted")) +
   ggtitle("B: Incongruent") +
