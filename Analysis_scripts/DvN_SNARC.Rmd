@@ -273,7 +273,6 @@ g <- arrangeGrob(congruent.snarc, incongruent.snarc, nrow = 1)
   ggsave(here::here("DvN_manuscript_analysis/Figures/results.fig.2.tiff"), g,  width = 15, height = 7, units = 'cm', dpi = 900, type = 'cairo')
 ```
 
-
 ## Figure 4: RM ANOVA for reaction time data - Non-symbolic numerals (numerosity)
 
 1) First we filter out outliers, and switch the magnitude for incongruent conditions. We do this because "magnitude" actually relates to the magnitude of the number digit. For numerosity, we need to alter this. When the conditions are congruent, the numerosity magnitude is the same as the number magnitude (i.e. number < 3 = small, number > 3 = large). When incongruent, numerosity magnitude is the opposite of number magnitude (i.e. number < 3 = large, number > 3 = small). 
