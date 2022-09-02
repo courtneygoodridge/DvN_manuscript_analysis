@@ -109,7 +109,7 @@ panel.background = element_blank(), axis.line = element_line(colour = "black"))
 
 2) Calculates percentage of errors per participant across the whole experiment. Here we find participant 5 and 45 have errors over 20%. These participant are therefore removed from the analysis. 
 
-3) Average number of errors (excluding particpant 5 and 45).
+3) Average number of errors (excluding participant 5 and 45).
 
 4) Calculates total errors across experiment.
 
