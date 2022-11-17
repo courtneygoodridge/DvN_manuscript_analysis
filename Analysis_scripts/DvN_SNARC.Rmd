@@ -189,7 +189,7 @@ dat_main <- dat_main %>%
 
 ## Figure 2: RM ANOVA for reaction time data - Symbolic numerals (digits)
 
-1) RM ANOVA on the data. 
+1) RM ANOVA on the data and post hoc analyses
 
 2) Some descriptive stats on the data (i.e. means of magnitude, hand, and congruency conditions). 
 
@@ -198,7 +198,7 @@ dat_main <- dat_main %>%
 4) plots for congruent and incongruent SNARC plots.
 
 ```{r}
-"1) RM ANOVA for symbolic numerals"
+"1) RM ANOVA for symbolic numerals and computing post hoc analysis via emmeans"
 aov.digits <- aov_car(ms ~ hand * magnitude * Congruent + Error(ppid/hand * magnitude * Congruent),
                       anova_table = list(es = "pes"),
                       data = dat_main %>%
@@ -206,11 +206,13 @@ aov.digits <- aov_car(ms ~ hand * magnitude * Congruent + Error(ppid/hand * magn
 
 aov.digits
 
+emmeans::emmeans(aov.digits, specs = pairwise ~ hand * magnitude)
+
 "2) descriptives"
-dat_main %>%
+View(dat_main %>%
   dplyr::filter(Condition == "Digit", ppid != 45, ppid != 5, outlier == FALSE) %>%
   dplyr::group_by(Congruent, hand, magnitude) %>%
-  dplyr::summarise(m = mean(ms))
+  dplyr::summarise(m = mean(ms)))
 
 View(summarySE(dat_main %>%
                  dplyr::filter(Condition == "Digit", ppid != 45, ppid != 5, outlier == FALSE), measurevar = "ms", groupvars = c("Congruent")))
@@ -218,9 +220,11 @@ View(summarySE(dat_main %>%
 View(summarySE(dat_main %>%
                  dplyr::filter(Condition == "Digit", ppid != 45, ppid != 5, outlier == FALSE), measurevar = "ms", groupvars = c("magnitude")))
 
-"3) calculating mean and SEMs for confidence intervals"
+"3) calculating mean and SEMs for confidence intervals + descriptives"
 summary.digits <- summarySE(dat_main %>%
                               dplyr::filter(Condition == "Digit", ppid != 45, ppid != 5, outlier == FALSE), measurevar = "ms", groupvars = c("hand", "magnitude", "Congruent"))
+
+View(summary.digits)
 
 "4) plots for congruent and incongruent SNARC"
 congruent.snarc <- ggplot() +
@@ -300,6 +304,8 @@ aov.n <- aov_car(ms ~ hand * magnitude * Congruent + Error(ppid/hand * magnitude
                  data = numerosity.dat)
 aov.n
 
+emmeans::emmeans(aov.digits, specs = pairwise ~ hand + magnitude + Congruent)
+
 "2) descriptives"
 numerosity.dat %>%
   dplyr::group_by(Congruent, magnitude, hand) %>%
@@ -313,6 +319,8 @@ View(summarySE(numerosity.dat, measurevar = "ms", groupvars = c("magnitude")))
 
 "3)"
 summary.n <- summarySE(numerosity.dat, measurevar = "ms", groupvars = c("hand", "magnitude", "Congruent"))
+
+View(summary.n)
 
 "4) SNARC plots for numerosity condition"
 congruent.snarc <- ggplot() +
