@@ -18,6 +18,12 @@ Within the Analysis_script folder, there are 3 analysis scripts. `Run DvN_SNARC.
 
 To run these scripts, clone the `DvN_manuscript_analysis` repository into your working directory (you can find this by running the `here::here()` function in the R command line). For more information on using the `here::here()`, see the [documentation](https://here.r-lib.org/). Once the repository is in your working directory, run each chunk of code to run the models and analysis. 
 
+## Session info
+`sessionInfo()`
+
+<img width="664" alt="image" src="https://github.com/courtneygoodridge/DvN_manuscript_analysis/assets/44811378/90f66773-6066-4871-8f13-3134aab1870c">
+
+
 
 
  
