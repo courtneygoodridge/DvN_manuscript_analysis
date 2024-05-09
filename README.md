@@ -1,7 +1,7 @@
 # Contrasting symbolic and non-symbolic numerical representations in a joint classification task: code and analysis
 
 ## Reference
-**If you using any elements of this repository, please cite**: Prpic, V., Basamh, Y. A., Goodridge, C. M., Agostini, T., & Murgia, M. (2023). Contrasting symbolic and non-symbolic numerical representations in a joint classification task. Psychonomic Bulletin & Review, 1-9.
+Prpic, V., Basamh, Y. A., Goodridge, C. M., Agostini, T., & Murgia, M. (2023). Contrasting symbolic and non-symbolic numerical representations in a joint classification task. Psychonomic Bulletin & Review, 1-9.
 
 ## Overview: experimental design 
 Many studies highlight that people represent numbers on mental number lines. Evidence of this occurs in the SNARC (spatial–numerical association of response codes) effect, whereby people are faster to respond with left key pressses for small numbers and faster right key presses for large numbers. The experiment highlighted in this repository aimed to understand whether symbolic (digits) and non-symbolic (dots) numerals interacted with the SNARC effect. 
